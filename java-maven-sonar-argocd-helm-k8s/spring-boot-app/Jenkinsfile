@@ -2,7 +2,11 @@ pipeline {
     agent any
 
     parameters {
-        booleanParam(name: 'RUN_SONAR', defaultValue: false, description: 'Run SonarQube analysis')
+        booleanParam(
+            name: 'RUN_SONAR',
+            defaultValue: false,
+            description: 'Run SonarQube analysis and Quality Gate'
+        )
     }
 
     tools {
@@ -13,7 +17,7 @@ pipeline {
     environment {
         SONAR_PROJECT_KEY  = "spring-boot-app"
         SONAR_PROJECT_NAME = "spring-boot-app"
-        DOCKER_IMAGE       = "<your-dockerhub-username>/spring-boot-app"
+        DOCKER_IMAGE       = "hitesh008/spring-boot-app"
     }
 
     stages {
