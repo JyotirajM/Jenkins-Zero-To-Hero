@@ -9,6 +9,7 @@ pipeline {
     environment {
         SONAR_PROJECT_KEY  = "spring-boot-app"
         SONAR_PROJECT_NAME = "spring-boot-app"
+        DOCKER_IMAGE       = "hitesh008/spring-boot-app"
     }
 
     stages {
@@ -57,6 +58,22 @@ pipeline {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
                     sh '''
                     docker build -t spring-boot-app:latest .
+                    docker tag spring-boot-app:latest $DOCKER_IMAGE:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:latest
                     '''
                 }
             }
@@ -65,7 +82,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI Pipeline completed successfully (Build + Sonar + Quality Gate + Docker)"
+            echo "✅ CI pipeline completed: Build + Sonar + Quality Gate + Docker Push"
         }
         failure {
             echo "❌ Pipeline failed"
