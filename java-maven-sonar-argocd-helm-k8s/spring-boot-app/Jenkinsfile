@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'RUN_SONAR', defaultValue: false, description: 'Run SonarQube analysis')
+    }
+
     tools {
         maven 'maven-latest'
         jdk 'JDK17'
@@ -9,7 +13,7 @@ pipeline {
     environment {
         SONAR_PROJECT_KEY  = "spring-boot-app"
         SONAR_PROJECT_NAME = "spring-boot-app"
-        DOCKER_IMAGE       = "hitesh008/spring-boot-app"
+        DOCKER_IMAGE       = "<your-dockerhub-username>/spring-boot-app"
     }
 
     stages {
@@ -30,6 +34,9 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
+            when {
+                expression { params.RUN_SONAR }
+            }
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
                     withSonarQubeEnv('SonarQube') {
@@ -46,6 +53,9 @@ pipeline {
         }
 
         stage('Quality Gate') {
+            when {
+                expression { params.RUN_SONAR }
+            }
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -53,28 +63,21 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        stage('Docker Build & Push') {
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh '''
-                    docker build -t spring-boot-app:latest .
-                    docker tag spring-boot-app:latest $DOCKER_IMAGE:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push $DOCKER_IMAGE:latest
-                    '''
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                        docker build -t spring-boot-app:latest .
+                        docker tag spring-boot-app:latest $DOCKER_IMAGE:latest
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $DOCKER_IMAGE:latest
+                        '''
+                    }
                 }
             }
         }
@@ -82,7 +85,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI pipeline completed: Build + Sonar + Quality Gate + Docker Push"
+            echo "✅ Pipeline completed successfully"
         }
         failure {
             echo "❌ Pipeline failed"
