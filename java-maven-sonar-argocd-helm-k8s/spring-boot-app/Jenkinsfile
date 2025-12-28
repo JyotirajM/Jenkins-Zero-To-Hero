@@ -1,40 +1,51 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven'
+        jdk 'Java17'
+    }
+
+    environment {
+        SONAR_PROJECT_KEY = "spring-boot-app"
+        SONAR_PROJECT_NAME = "spring-boot-app"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+                    url: 'https://github.com/JyotirajM/Jenkins-Zero-To-Hero.git'
             }
         }
 
-        stage('Build and Test') {
+        stage('Build') {
             steps {
-                sh '''
-                cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-                mvn clean package
-                '''
+                sh 'mvn clean compile'
             }
         }
 
-        stage('Static Code Analysis') {
-            environment {
-                SONAR_URL = "http://localhost:9000"
-            }
+        stage('SonarQube Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_AUTH_TOKEN')]) {
-                    sh '''
-                    cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-                    mvn sonar:sonar \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN \
-                    -Dsonar.host.url=$SONAR_URL
-                    '''
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                    mvn clean verify sonar:sonar \
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    -Dsonar.projectName=${SONAR_PROJECT_NAME}
+                    """
                 }
             }
         }
+    }
 
+    post {
+        success {
+            echo "✅ Pipeline completed successfully"
+        }
+        failure {
+            echo "❌ Pipeline failed"
+        }
     }
 }
 
