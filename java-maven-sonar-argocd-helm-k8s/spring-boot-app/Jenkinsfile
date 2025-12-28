@@ -36,7 +36,8 @@ pipeline {
                         mvn clean verify \
                         org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar \
                         -Dsonar.projectKey=spring-boot-app \
-                        -Dsonar.projectName=spring-boot-app
+                        -Dsonar.projectName=spring-boot-app \
+                        -Dsonar.ws.timeout=300
                         '''
                     }
                 }
