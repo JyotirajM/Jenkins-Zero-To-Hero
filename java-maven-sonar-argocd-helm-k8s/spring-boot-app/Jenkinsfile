@@ -32,15 +32,25 @@ pipeline {
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
                     withSonarQubeEnv('SonarQube') {
-                        sh """
+                        sh '''
                         mvn clean verify \
                         org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.projectName=${SONAR_PROJECT_NAME}
-                        """
+                        -Dsonar.projectKey=spring-boot-app \
+                        -Dsonar.projectName=spring-boot-app
+                        '''
                     }
                 }
             }
         }
     }
+
+    post {
+        success {
+            echo "✅ Pipeline completed successfully"
+        }
+        failure {
+            echo "❌ Pipeline failed"
+        }
+    }
+}
 
