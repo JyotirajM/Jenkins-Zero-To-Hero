@@ -15,7 +15,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "yourdockerhubusername/spring-boot-app"
+        IMAGE_NAME = "hitesh008/spring-boot-app"
         IMAGE_TAG  = "${BUILD_NUMBER}"
         DOCKER_CREDS = credentials('dockerhub-creds')
         SONARQUBE_ENV = 'SonarQube'
