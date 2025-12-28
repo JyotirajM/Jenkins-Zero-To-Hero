@@ -15,24 +15,24 @@ pipeline {
     }
 
     environment {
-        SONAR_PROJECT_KEY  = "spring-boot-app"
-        SONAR_PROJECT_NAME = "spring-boot-app"
-        DOCKER_IMAGE       = "hitesh008/spring-boot-app"
+        IMAGE_NAME = "yourdockerhubusername/spring-boot-app"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+        DOCKER_CREDS = credentials('dockerhub-creds')
+        SONARQUBE_ENV = 'SonarQube'
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/JyotirajM/Jenkins-Zero-To-Hero.git'
+                checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Build with Maven') {
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    sh 'mvn clean compile'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
@@ -43,14 +43,8 @@ pipeline {
             }
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                        mvn clean verify \
-                        org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar \
-                        -Dsonar.projectKey=spring-boot-app \
-                        -Dsonar.projectName=spring-boot-app \
-                        -Dsonar.ws.timeout=300
-                        '''
+                    withSonarQubeEnv("${SONARQUBE_ENV}") {
+                        sh 'mvn sonar:sonar'
                     }
                 }
             }
@@ -61,38 +55,40 @@ pipeline {
                 expression { params.RUN_SONAR }
             }
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Docker Build') {
             steps {
                 dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
-                        sh '''
-                        docker build -t spring-boot-app:latest .
-                        docker tag spring-boot-app:latest $DOCKER_IMAGE:latest
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push $DOCKER_IMAGE:latest
-                        '''
-                    }
+                    sh """
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                    """
                 }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                sh """
+                    echo "${DOCKER_CREDS_PSW}" | docker login -u "${DOCKER_CREDS_USR}" --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:latest
+                """
             }
         }
     }
 
     post {
         success {
-            echo "✅ Pipeline completed successfully"
+            echo '✅ Pipeline completed successfully'
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo '❌ Pipeline failed'
         }
     }
 }
